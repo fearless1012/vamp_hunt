@@ -2,7 +2,7 @@
 ** GAME VARIABLES
 **************************************************/
 var canvas,			// Canvas DOM element
-	context,			// Canvas rendering context
+	context,		// Canvas rendering context
 	localPlayer,	// Local player
 	remotePlayer,
 	socket;
@@ -17,7 +17,8 @@ var map_size,
 	available_points,
 	vamp_turn,
 	change_pos,
-	road_connected , rail_connected , underground_connected;
+	bus_points,ug_points,
+	road_connected, bus_connected, ug_connected;
 	var Player = function () {
 		var id;
 	}
@@ -50,7 +51,7 @@ function init()
 		// Start listening for events
 		setEventHandlers();
 		
-	};
+	}
 	
 function init_variables()
 	{
@@ -66,7 +67,7 @@ function init_variables()
 		available_points = new Array(no_of_points);
 		
 		road_connected = new Array(no_of_points);
-		rail_connected = new Array(no_of_points);
+		bus_connected = new Array(no_of_points);
 		underground_connected = new Array(no_of_points);
 		
 		for(var i=0;i<no_of_points;i++)
@@ -81,13 +82,16 @@ function init_variables()
 **************************************************/
 function resize()
 	{
-		canvas.width = window.innerWidth;
-		canvas.height = window.innerHeight;
+		var size;
 		
-		if(canvas.width<canvas.height)
-		map_size = 5*canvas.width/6;
+		if(window.innerWidth<window.innerHeight)
+		size=window.innerWidth;
 		else
-		map_size = 5*canvas.height/6;
+		size=window.innerHeight;
+		
+		canvas.width = size;
+		canvas.height = size;
+		map_size = 5*size/6;
 		
 		point_radius = map_size/100;
 		load_points();
@@ -108,7 +112,7 @@ var setEventHandlers = function() {
 		socket.on("new player", onNewPlayer);
 		socket.on("remove player", onRemovePlayer);
 		socket.on("player positions", Player_positions);
-	};
+	}
 
 // mouse down
 function onMousedown(e) 
@@ -120,6 +124,7 @@ function onMousedown(e)
 			{
 				if(mousePos.x>=(x[i]-point_radius) && mousePos.x<=(x[i]+point_radius) && mousePos.y>=(y[i]-point_radius) && mousePos.y<=(y[i]+point_radius))
 				{
+					show_places(i);
 					if(i==vamp)
 					{
 						change_pos = 5;
@@ -170,6 +175,7 @@ function onMouseup(e)
 
 function onMousemove(e) 
 	{
+		canvas.style.cursor = 'default';
 		if (localPlayer) 
 		{
 			var mousePos = getMousePos(e);
@@ -180,22 +186,22 @@ function onMousemove(e)
 					if(mousePos.x>=(x[i]-point_radius) && mousePos.x<=(x[i]+point_radius) && mousePos.y>=(y[i]-point_radius) && mousePos.y<=(y[i]+point_radius))
 					{
 						show_places(i);
+						if(i==vamp)
+						{
+							canvas.style.cursor = 'pointer';
+						}
+						for(var j=0;j<no_of_hunters;j++)
+						{
+							if(i==hunt[j])
+							{
+								canvas.style.cursor = 'pointer';
+							}
+						}
+							
 					}
 				}
 				draw_map();
 			}
-			else
-			{
-				//draw_map();
-				if(change_pos==5)
-					context.fillStyle = 'pink';
-				else
-					context.fillStyle = 'blue';
-
-					context.beginPath();
-				context.arc(mousePos.x,mousePos.y,point_radius,0,Math.PI*2,true);
-				context.fill();
-			}			
 		}
 	}
 //get mouse position
@@ -218,7 +224,7 @@ function onSocketConnected(){
 function onSocketDisconnect()
 	{
 		console.log("Disconnected from socket server");
-	};
+	}
 
 function onNewPlayer(data) 
 	{
@@ -226,7 +232,7 @@ function onNewPlayer(data)
 		var newPlayer = new Player();
 		newPlayer.id = data.id;
 		remotePlayers.push(newPlayer);
-	};
+	}
 
 function onRemovePlayer(data) 
 	{
@@ -240,7 +246,7 @@ function onRemovePlayer(data)
 		//console.log(remotePlayers.length);
 		remotePlayers.splice(remotePlayers.indexOf(removePlayer), 1);
 		
-	};
+	}
 function Player_positions(data)
 {
 	vamp = data.vamp;
@@ -255,7 +261,7 @@ function playerById(id) {
     };
 
     return false;
-};
+}
 /**************************************************
 ** GAME ANIMATION LOOP
 **************************************************/
@@ -270,80 +276,27 @@ function show_places(chosen)
 		{
 			available_points[road_connected[chosen][i]] = 1 ;
 		}
-	}
-
-/**************************************************
-** GAME DRAW
-**************************************************/
-function draw() 
-{ 
-	// Draw the map
-	draw_map();
-	//Draw the menu
-	draw_menu();
-}
+		for(var i=0;i<bus_points.length;i++)
+		{
+			if(chosen==bus_points[i])
+			{
+				for(var i=0;i<bus_connected[chosen].length;i++)
+				{
+					available_points[bus_connected[chosen][i]] = 3 ;
+				}
+				break;
+			}
+		}
 	
-// Draw the map
-function draw_map()
-{
-	var map = new Image();
-	map.src = "map.jpg";
-	map.onload = function() 
-	{
-		context.drawImage(map, 0, 0,map_size,map_size);
-		draw_points();
-	};
-}
-
-//Draw the points
-function draw_points()
-{
-	for(var i=0;i<no_of_points;i++)
-	{
-		context.beginPath();
-		context.arc(x[i],y[i],point_radius,0,Math.PI*2,true);
-		context.lineWidth = 2;
-		if(i==vamp&&change_pos!=5)
-		context.fillStyle = 'pink';
-		else
-		context.fillStyle = 'green';
-		for(var j=0;j<hunt.length;j++)
-			if(hunt[j]==i&&change_pos!=(j+1))
-				context.fillStyle = 'blue';
-		context.fill();
-		if(!available_points[i])
-		context.strokeStyle = '#003300';
-		else if(available_points[i]==1)
-		context.strokeStyle = 'red';
-		else
-		context.strokeStyle = 'yellow';
-		context.stroke();
-		context.fillStyle = 'yellow';
-	//	context.fillText(i, x[i]-point_radius, y[i]); - use when you need to know point number !
-		if(change_pos==0)
+		for(var i=0;i<u_connected.length;i++)
 		{
-		//available_points[i]=0;
-		console.log("PP");
+			if(chosen==i)
+			{
+				for(var i=0;i<u_connected.length;i++)
+				{
+					available_points[u_connected[chosen][i]] = 4 ;
+				}
+				break;
+			}	
 		}
-		else
-		{
-			console.log(i);
-		}	
 	}
-}
-function draw_menu()
-{
-	context.fillStyle = 'black';
-	context.fillRect(0,map_size,map_size,canvas.height);
-	context.fill();
-	context.fillStyle = 'orange';
-	var arc_y = map_size*(11/10);
-	var arc_x = map_size/8;
-	for(var i=0;i<4;i++)
-		{
-			context.beginPath();
-			context.arc(arc_x+(arc_x*i*2),arc_y,arc_x/2,0,Math.PI*2,true);
-			context.stroke();
-			context.fill();
-		}
-}
