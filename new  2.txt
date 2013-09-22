@@ -1,11 +1,6 @@
-/**************************************************
-** GAME VARIABLES
-**************************************************/
+
 var canvas,			// Canvas DOM element
-	context,		// Canvas rendering context
-	localPlayer,	// Local player
-	remotePlayer,
-	socket;
+	context;		// Canvas rendering context
 var map_size,
 	no_of_points,
 	point_radius,
@@ -15,10 +10,10 @@ var map_size,
 	hunt,
 	caught,
 	available_points,
-	vamp_turn,
 	change_pos,
 	bus_points,ug_points,
-	road_connected, bus_connected, ug_connected;
+	road_connected, bus_connected, ug_connected,
+	turn,player_number;
 	var Player = function () {
 		var id;
 	}
@@ -39,25 +34,53 @@ function init()
 		// Maximise the canvas
 		resize();
 			
-		socket = io.connect("http://localhost", {port: 1012, transports: ["websocket"]});
-		remotePlayers = [];
-
 		// Calculate a random start position for the players
 		//	init_posi_randomiser();
-
-		// Initialise the local player
-		localPlayer = new Player();
 
 		// Start listening for events
 		setEventHandlers();
 		
+		//initialise positions 
+		init_posi_randomiser();
+		
+		//start with vampire
+	//               nv                                                                                                                                                                                                                                                                                                                                                                            n+++	vamp_turn();
+		
+	}
+	
+function init_posi_randomiser()
+	{
+		var no_of_points = 94;
+		var temp3;
+		var temp = new Array(no_of_points);
+		for(var i=0;i<no_of_points;i++)
+		{
+			temp[i]=i;
+		}
+		for(var i=0;i<no_of_points;i++)
+		{
+			var temp2 = Math.floor((no_of_points) * Math.random());
+			for(var j=0;j<(hunt.length+1);j++)
+			{
+				temp3 = temp[j];
+				temp[j] = temp[temp2];
+				temp[temp2] = temp3;
+			}
+		}
+		
+		vamp = temp[0];
+		for(var i=0;i<hunt.length;i++)
+		{
+			hunt[i]=temp[i+1];
+		}
 	}
 	
 function init_variables()
 	{
 		no_of_points = 94;
-		vamp_turn = 1;
 		change_pos = 0;
+		turn=0;
+		player_number=1;
 		
 		no_of_hunters = 4;
 		hunt = new Array(no_of_hunters);
@@ -107,17 +130,12 @@ var setEventHandlers = function() {
 
 		// Window resize
 		window.addEventListener("resize", resize, false);
-		socket.on("connect", onSocketConnected);
-		socket.on("disconnect", onSocketDisconnect);
-		socket.on("new player", onNewPlayer);
-		socket.on("remove player", onRemovePlayer);
-		socket.on("player positions", Player_positions);
 	}
 
 // mouse down
 function onMousedown(e) 
 	{
-		if (localPlayer) 
+		if (turn%2==player_number) 
 		{
 			var mousePos = getMousePos(e);
 			for(var i=0;i<no_of_points;i++)
@@ -143,7 +161,7 @@ function onMousedown(e)
 
 function onMouseup(e) 
 	{
-		if (localPlayer) 
+		if (turn%2==player_number) 
 		{
 			if(change_pos!=0)
 			{
@@ -152,7 +170,7 @@ function onMouseup(e)
 				{
 					if(mousePos.x>=(x[i]-point_radius) && mousePos.x<=(x[i]+point_radius) && mousePos.y>=(y[i]-point_radius) && mousePos.y<=(y[i]+point_radius))
 					{ 
-						if(available_points[i]==1)
+						if(available_points[i]==1||available_points[i]==3||available_points[i]==4)
 						{
 							if(change_pos == 5)
 							{
@@ -165,6 +183,12 @@ function onMouseup(e)
 									hunt[j]=i;
 								}
 							}
+							turn++;
+							comp_turn();
+							if(player_number==0)
+							{
+								
+							}
 						}
 					}
 				}
@@ -176,32 +200,29 @@ function onMouseup(e)
 function onMousemove(e) 
 	{
 		canvas.style.cursor = 'default';
-		if (localPlayer) 
-		{
-			var mousePos = getMousePos(e);
-			if(change_pos==0)
-			{				
-				for(var i=0;i<no_of_points;i++)
+		var mousePos = getMousePos(e);
+		if(change_pos==0)
+		{				
+			for(var i=0;i<no_of_points;i++)
+			{
+				if(mousePos.x>=(x[i]-point_radius) && mousePos.x<=(x[i]+point_radius) && mousePos.y>=(y[i]-point_radius) && mousePos.y<=(y[i]+point_radius))
 				{
-					if(mousePos.x>=(x[i]-point_radius) && mousePos.x<=(x[i]+point_radius) && mousePos.y>=(y[i]-point_radius) && mousePos.y<=(y[i]+point_radius))
+					show_places(i);
+					if(i==vamp)
 					{
-						show_places(i);
-						if(i==vamp)
+						canvas.style.cursor = 'pointer';
+					}
+					for(var j=0;j<no_of_hunters;j++)
+					{
+						if(i==hunt[j])
 						{
 							canvas.style.cursor = 'pointer';
 						}
-						for(var j=0;j<no_of_hunters;j++)
-						{
-							if(i==hunt[j])
-							{
-								canvas.style.cursor = 'pointer';
-							}
-						}
-							
 					}
+						
 				}
-				draw_map();
 			}
+			draw_map(mousePos);
 		}
 	}
 //get mouse position
@@ -214,54 +235,6 @@ function getMousePos(evt){
 			  y: mouseY
 			}
 		}
-	  
-function onSocketConnected(){
-		console.log("Connected to socket server");
-		socket.emit("new player");
-		draw_map();
-	}
-
-function onSocketDisconnect()
-	{
-		console.log("Disconnected from socket server");
-	}
-
-function onNewPlayer(data) 
-	{
-		console.log("New player connected: "+data.id);
-		var newPlayer = new Player();
-		newPlayer.id = data.id;
-		remotePlayers.push(newPlayer);
-	}
-
-function onRemovePlayer(data) 
-	{
-		var removePlayer = playerById(data.id);
-
-		if (!removePlayer) 
-		{
-			console.log("Player not found: "+data.id);
-			return;
-		};
-		//console.log(remotePlayers.length);
-		remotePlayers.splice(remotePlayers.indexOf(removePlayer), 1);
-		
-	}
-function Player_positions(data)
-{
-	vamp = data.vamp;
-	hunt = data.hunt;
-//	console.log(hunt[2]);
-}
-function playerById(id) {
-    var i;
-    for (i = 0; i < remotePlayers.length; i++) {
-        if (remotePlayers[i].id == id)
-            return remotePlayers[i];
-    };
-
-    return false;
-}
 /**************************************************
 ** GAME ANIMATION LOOP
 **************************************************/
@@ -278,23 +251,25 @@ function show_places(chosen)
 		}
 		for(var i=0;i<bus_points.length;i++)
 		{
-			if(chosen==bus_points[i])
+			if(bus_points[i]==chosen)
 			{
-				for(var i=0;i<bus_connected[chosen].length;i++)
+				for(var j=0;j<bus_connected[chosen].length;j++)
 				{
-					available_points[bus_connected[chosen][i]] = 3 ;
+					if(j!=i)
+					available_points[bus_connected[chosen][j]] = 3 ;
 				}
 				break;
 			}
 		}
 	
-		for(var i=0;i<u_connected.length;i++)
+		for(var i=0;i<u_points.length;i++)
 		{
-			if(chosen==i)
+			if(u_points[i]==chosen)
 			{
-				for(var i=0;i<u_connected.length;i++)
+				for(var j=0;j<u_points.length;j++)
 				{
-					available_points[u_connected[chosen][i]] = 4 ;
+					if(j!=i)
+					available_points[u_points[j]] = 4 ;
 				}
 				break;
 			}	

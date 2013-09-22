@@ -130,8 +130,8 @@ function road()
 		road_connected[24] = [93,25,40];	
 		road_connected[25] = [24,28,40];	
 		road_connected[26] = [93,27];	
-		road_connected[27] = [23,26,28];	  
-		road_connected[28] = [25,27,29,31] ;
+		road_connected[27] = [23,26];	  
+		road_connected[28] = [25,29,31] ;
 		road_connected[29] = [28,30,31];
 		road_connected[30] = [29,31,35];
 		road_connected[31] = [28,29,30,33];
@@ -200,17 +200,36 @@ function road()
 	}
 function bus()
 	{
-		bus_points=[0,3,79,9,12,32,17,26,16,91,82,84,62,32,57,68,92,79,17]
-		bus_connected[1]=[3,9];
-		bus_connected[3]=[0,79];
-		bus_connected[79]=[3];
-		bus_connected[9]=[0,12];
-		bus_connected[12]=[9,32];
-		bus_connected[32]=[12];
-		bus_connected[16]=[26];
-		bus_connected[26]=[2];
+		bus_points=[0,3,4,6,9,12,23,25,26,28,35,45,47,48,49,54,60,68,71,76,79,82,86,91,92];
+
+		bus_connected[0]=[6];//2
+		bus_connected[3]=[4,6];//5
+		bus_connected[4]=[3,79];//5
+		bus_connected[6]=[0,3];//5
+		bus_connected[9]=[6,91];//3
+		bus_connected[12]=[9,23,26];//5
+		bus_connected[23]=[12,26];//5
+		bus_connected[25]=[45];//4
+		bus_connected[26]=[12,23];//4
+		bus_connected[28]=[48,35];//5
+		bus_connected[35]=[49,28];//4
+		bus_connected[45]=[60,25,47];//5
+		bus_connected[47]=[45];//3
+		bus_connected[48]=[28,49];//5
+		bus_connected[49]=[35,92,54];//6
+		bus_connected[54]=[60];//4
+		bus_connected[60]=[82,71,45];//5
+		bus_connected[68]=[71];//2
+		bus_connected[71]=[60,68];//4
+		bus_connected[76]=[79,91];//6
+		bus_connected[79]=[4,76];//3
+		bus_connected[82]=[86,60];//3
+		bus_connected[86]=[91,82];//4
+		bus_connected[91]=[76,86,12];//4
+		bus_connected[92]=[49];//2
+		
 	}
 function underground()
 	{
-		u_points=[79,80,81,85,91,12,16,18,20];
+		u_points=[0,3,4,76,86,60,48,35,92];
 	}
